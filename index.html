@@ -1,0 +1,999 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FocusFlow — Visual Workspace & Daily Planner</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        sage: {
+                            50: '#f4f7f4',
+                            100: '#e5eee5',
+                            200: '#cce0cc',
+                            500: '#7c9d8e',
+                            600: '#5f7d70',
+                            700: '#4c6359'
+                        },
+                        beige: {
+                            50: '#fcfbfa',
+                            100: '#f7f4f0',
+                            200: '#ede6dd',
+                            300: '#e0d5c5'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'Tajawal', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts: Inter and Tajawal for Bilingual support -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', 'Tajawal', sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        [dir="rtl"] body {
+            font-family: 'Tajawal', 'Inter', sans-serif;
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.78);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+        .dark .glass-panel {
+            background: rgba(30, 41, 59, 0.75);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .glass-sidebar {
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+        }
+        .dark .glass-sidebar {
+            background: rgba(15, 23, 42, 0.88);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(124, 157, 142, 0.4);
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(124, 157, 142, 0.7);
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: flex;
+            animation: fadeIn 0.3s ease-in-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-beige-100 dark:bg-slate-900 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col antialiased selection:bg-sage-500 selection:text-white">
+
+    <div class="flex h-screen overflow-hidden">
+        
+        <!-- Mobile Sidebar Overlay -->
+        <div id="sidebarOverlay" class="fixed inset-0 bg-slate-900/50 z-40 hidden md:hidden transition-opacity duration-300"></div>
+
+        <!-- Sidebar Navigation -->
+        <aside id="sidebar" class="fixed md:static inset-y-0 left-0 z-50 w-72 glass-sidebar border-r border-slate-200/60 dark:border-slate-800 flex flex-col transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out">
+            <!-- Brand Logo -->
+            <div class="p-6 flex items-center justify-between border-b border-slate-200/60 dark:border-slate-800">
+                <div class="flex items-center space-x-3 rtl:space-x-reverse">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-sage-600 to-sage-500 flex items-center justify-center text-white shadow-lg shadow-sage-500/30">
+                        <i class="fa-solid fa-leaf text-lg"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-lg tracking-tight bg-gradient-to-r from-sage-700 to-slate-800 dark:from-sage-200 dark:to-white bg-clip-text text-transparent">FocusFlow</h1>
+                        <p class="text-xs text-slate-500 dark:text-slate-400" data-i18n="tagline">Visual Workspace</p>
+                    </div>
+                </div>
+                <button id="closeSidebar" class="md:hidden text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            <!-- Navigation Tab Links -->
+            <nav class="flex-1 px-4 py-6 space-y-2 overflow-y-auto" id="navTabs">
+                <button data-tab="dashboard" class="w-full flex items-center space-x-3 rtl:space-x-reverse px-4 py-3 rounded-xl bg-sage-500 text-white font-medium shadow-md shadow-sage-500/20 transition-all text-left rtl:text-right">
+                    <i class="fa-solid fa-house-chimney w-5"></i>
+                    <span data-i18n="nav_dashboard">Dashboard</span>
+                </button>
+                <button data-tab="tasks" class="w-full flex items-center space-x-3 rtl:space-x-reverse px-4 py-3 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-sage-100 dark:hover:bg-slate-800 font-medium transition-all text-left rtl:text-right">
+                    <i class="fa-solid fa-kanban w-5"></i>
+                    <span data-i18n="nav_kanban">Tasks Board</span>
+                </button>
+                <button data-tab="habits" class="w-full flex items-center space-x-3 rtl:space-x-reverse px-4 py-3 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-sage-100 dark:hover:bg-slate-800 font-medium transition-all text-left rtl:text-right">
+                    <i class="fa-solid fa-square-check w-5"></i>
+                    <span data-i18n="nav_habits">Habit Tracker</span>
+                </button>
+                <button data-tab="pomodoro" class="w-full flex items-center space-x-3 rtl:space-x-reverse px-4 py-3 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-sage-100 dark:hover:bg-slate-800 font-medium transition-all text-left rtl:text-right">
+                    <i class="fa-solid fa-clock w-5"></i>
+                    <span data-i18n="nav_pomodoro">Pomodoro Timer</span>
+                </button>
+            </nav>
+
+            <!-- Productivity Stats Footer in Sidebar -->
+            <div class="p-4 mx-4 mb-6 rounded-2xl bg-sage-50 dark:bg-slate-800/60 border border-sage-200 dark:border-slate-700">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-semibold uppercase tracking-wider text-sage-700 dark:text-sage-300" data-i18n="daily_progress">Daily Goal</span>
+                    <span id="progressText" class="text-xs font-bold text-sage-700 dark:text-sage-300">0%</span>
+                </div>
+                <div class="w-full bg-slate-200 dark:bg-slate-700 h-2 rounded-full overflow-hidden">
+                    <div id="progressBar" class="bg-sage-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 flex flex-col h-screen overflow-hidden">
+            
+            <header class="h-20 glass-panel border-b border-slate-200/60 dark:border-slate-800 px-6 flex items-center justify-between z-30 shrink-0">
+                <div class="flex items-center space-x-4 rtl:space-x-reverse">
+                    <button id="hamburgerBtn" class="md:hidden text-slate-600 dark:text-slate-300 hover:text-sage-600 focus:outline-none p-2 rounded-lg bg-slate-100 dark:bg-slate-800">
+                        <i class="fa-solid fa-bars text-lg"></i>
+                    </button>
+                    <div>
+                        <h2 id="greetingTitle" class="text-xl font-bold tracking-tight text-slate-800 dark:text-slate-100">Good Morning, Achiever ✨</h2>
+                        <p id="currentDateDisplay" class="text-xs text-slate-500 dark:text-slate-400">Friday, Sep 25, 2026</p>
+                    </div>
+                </div>
+
+                <!-- Header Actions (Theme Toggle, Language Toggle, Quick Add Task Button) -->
+                <div class="flex items-center space-x-3 rtl:space-x-reverse">
+                    <!-- Language Toggle -->
+                    <button id="langToggle" class="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-sage-100 dark:hover:bg-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 transition-colors flex items-center space-x-1.5 rtl:space-x-reverse">
+                        <i class="fa-solid fa-globe text-sage-600"></i>
+                        <span id="langText">AR</span>
+                    </button>
+
+                    <!-- Theme Toggle -->
+                    <button id="themeToggle" class="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-sage-100 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center transition-colors">
+                        <i class="fa-solid fa-moon dark:hidden"></i>
+                        <i class="fa-solid fa-sun hidden dark:block text-amber-400"></i>
+                    </button>
+
+                    <!-- Quick Add Task Button -->
+                    <button id="openModalBtn" class="hidden sm:flex items-center space-x-2 rtl:space-x-reverse px-4 py-2.5 rounded-xl bg-sage-500 hover:bg-sage-600 text-white font-medium text-sm shadow-lg shadow-sage-500/25 transition-all transform hover:-translate-y-0.5">
+                        <i class="fa-solid fa-plus"></i>
+                        <span data-i18n="btn_new_task">New Task</span>
+                    </button>
+                </div>
+            </header>
+
+            <div class="flex-1 overflow-y-auto p-6">
+                
+                <!-- 1. DASHBOARD TAB -->
+                <div id="tab-dashboard" class="tab-content active flex-col space-y-8">
+                    <!-- Welcome Banner & Quick Metrics -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <div class="glass-panel p-5 rounded-2xl border border-white/60 dark:border-slate-800 shadow-sm flex items-center space-x-4 rtl:space-x-reverse">
+                            <div class="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center text-xl">
+                                <i class="fa-solid fa-list-check"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 font-medium" data-i18n="metric_tasks">Pending Tasks</p>
+                                <h3 id="statPending" class="text-2xl font-bold text-slate-800 dark:text-slate-100">0</h3>
+                            </div>
+                        </div>
+                        <div class="glass-panel p-5 rounded-2xl border border-white/60 dark:border-slate-800 shadow-sm flex items-center space-x-4 rtl:space-x-reverse">
+                            <div class="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-600 flex items-center justify-center text-xl">
+                                <i class="fa-solid fa-spinner"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 font-medium" data-i18n="metric_inprogress">In Progress</p>
+                                <h3 id="statInProgress" class="text-2xl font-bold text-slate-800 dark:text-slate-100">0</h3>
+                            </div>
+                        </div>
+                        <div class="glass-panel p-5 rounded-2xl border border-white/60 dark:border-slate-800 shadow-sm flex items-center space-x-4 rtl:space-x-reverse">
+                            <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-xl">
+                                <i class="fa-solid fa-circle-check"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 font-medium" data-i18n="metric_completed">Completed</p>
+                                <h3 id="statCompleted" class="text-2xl font-bold text-slate-800 dark:text-slate-100">0</h3>
+                            </div>
+                        </div>
+                        <div class="glass-panel p-5 rounded-2xl border border-white/60 dark:border-slate-800 shadow-sm flex items-center space-x-4 rtl:space-x-reverse">
+                            <div class="w-12 h-12 rounded-2xl bg-sage-500/10 text-sage-600 flex items-center justify-center text-xl">
+                                <i class="fa-solid fa-fire"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs text-slate-500 dark:text-slate-400 font-medium" data-i18n="metric_streak">Focus Streak</p>
+                                <h3 class="text-2xl font-bold text-slate-800 dark:text-slate-100">5 <span class="text-xs font-normal text-slate-500" data-i18n="days">days</span></h3>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dashboard Quick Widgets (Overview & Scratchpad) -->
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div class="lg:col-span-2 glass-panel p-6 rounded-3xl border border-white/60 dark:border-slate-800 shadow-xl flex flex-col justify-between">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100" data-i18n="dash_recent_tasks">Recent High-Priority Tasks</h3>
+                                <button onclick="switchTab('tasks')" class="text-xs text-sage-600 dark:text-sage-400 font-semibold hover:underline" data-i18n="view_all">View All →</button>
+                            </div>
+                            <div id="dashboardRecentTasks" class="space-y-3">
+                                <!-- Dynamic recent tasks injected here -->
+                            </div>
+                        </div>
+
+                        <!-- Quick Scratchpad Widget -->
+                        <div class="glass-panel p-6 rounded-3xl border border-white/60 dark:border-slate-800 shadow-xl flex flex-col">
+                            <div class="flex items-center justify-between mb-4">
+                                <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100" data-i18n="notes_title">Quick Scratchpad</h3>
+                                <span id="notesStatus" class="text-xs text-emerald-600 dark:text-emerald-400 font-medium" data-i18n="notes_saved">Saved</span>
+                            </div>
+                            <textarea id="scratchpadInput" class="w-full flex-1 min-h-[160px] p-4 rounded-2xl bg-slate-50/80 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-sage-500 resize-none transition-all" placeholder="Jot down quick thoughts or ideas..."></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. TASKS / KANBAN TAB -->
+                <div id="tab-tasks" class="tab-content flex-col space-y-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div>
+                            <h3 class="text-xl font-bold text-slate-800 dark:text-slate-100" data-i18n="kanban_title">Interactive Task Board</h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400" data-i18n="kanban_subtitle">Click arrows to shift task status or drag across columns</p>
+                        </div>
+                        <button onclick="openTaskModal()" class="px-4 py-2.5 rounded-xl bg-sage-500 hover:bg-sage-600 text-white font-medium text-sm shadow-lg shadow-sage-500/25 transition-all flex items-center justify-center space-x-2 rtl:space-x-reverse w-fit">
+                            <i class="fa-solid fa-plus"></i>
+                            <span data-i18n="btn_new_task">New Task</span>
+                        </button>
+                    </div>
+
+                    <!-- 3 Kanban Columns -->
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <!-- Todo Column -->
+                        <div class="glass-panel p-5 rounded-3xl border border-slate-200/60 dark:border-slate-700/50 flex flex-col shadow-lg">
+                            <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-200 dark:border-slate-700">
+                                <span class="text-xs font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400 flex items-center space-x-2 rtl:space-x-reverse">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                                    <span data-i18n="col_todo">To Do</span>
+                                </span>
+                                <span id="countTodo" class="w-6 h-6 rounded-full bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 text-xs font-bold flex items-center justify-center">0</span>
+                            </div>
+                            <div id="columnTodo" class="flex-1 space-y-3 overflow-y-auto min-h-[350px]" data-status="todo"></div>
+                        </div>
+
+                        <!-- In Progress Column -->
+                        <div class="glass-panel p-5 rounded-3xl border border-slate-200/60 dark:border-slate-700/50 flex flex-col shadow-lg">
+                            <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-200 dark:border-slate-700">
+                                <span class="text-xs font-bold uppercase tracking-wider text-blue-600 dark:text-blue-400 flex items-center space-x-2 rtl:space-x-reverse">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                                    <span data-i18n="col_inprogress">In Progress</span>
+                                </span>
+                                <span id="countInProgress" class="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 text-xs font-bold flex items-center justify-center">0</span>
+                            </div>
+                            <div id="columnInProgress" class="flex-1 space-y-3 overflow-y-auto min-h-[350px]" data-status="in-progress"></div>
+                        </div>
+
+                        <!-- Completed Column -->
+                        <div class="glass-panel p-5 rounded-3xl border border-slate-200/60 dark:border-slate-700/50 flex flex-col shadow-lg">
+                            <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-200 dark:border-slate-700">
+                                <span class="text-xs font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center space-x-2 rtl:space-x-reverse">
+                                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                                    <span data-i18n="col_completed">Completed</span>
+                                </span>
+                                <span id="countCompleted" class="w-6 h-6 rounded-full bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 text-xs font-bold flex items-center justify-center">0</span>
+                            </div>
+                            <div id="columnCompleted" class="flex-1 space-y-3 overflow-y-auto min-h-[350px]" data-status="completed"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. HABITS TAB -->
+                <div id="tab-habits" class="tab-content flex-col space-y-6">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                        <div>
+                            <h3 class="text-xl font-bold text-slate-800 dark:text-slate-100" data-i18n="habit_title">Weekly Habit Grid</h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400" data-i18n="habit_subtitle">Click any cell to toggle completion status cleanly with proper text alignment</p>
+                        </div>
+                        <button onclick="addNewHabitPrompt()" class="px-4 py-2.5 rounded-xl bg-sage-500 hover:bg-sage-600 text-white font-medium text-sm shadow-lg shadow-sage-500/25 transition-all flex items-center justify-center space-x-2 rtl:space-x-reverse w-fit">
+                            <i class="fa-solid fa-plus"></i>
+                            <span data-i18n="btn_add_habit">Add Habit</span>
+                        </button>
+                    </div>
+
+                    <!-- Clean Habit Table Container with proper alignment -->
+                    <div class="glass-panel p-6 rounded-3xl border border-white/60 dark:border-slate-800 shadow-xl overflow-x-auto">
+                        <table class="w-full text-left rtl:text-right border-collapse min-w-[650px]">
+                            <thead>
+                                <tr class="border-b border-slate-200 dark:border-slate-700/60 text-xs font-bold text-slate-500 dark:text-slate-400">
+                                    <th class="py-3 px-4 w-1/3" data-i18n="th_habit">Habit Name</th>
+                                    <th class="py-3 px-2 text-center">Sat</th>
+                                    <th class="py-3 px-2 text-center">Sun</th>
+                                    <th class="py-3 px-2 text-center">Mon</th>
+                                    <th class="py-3 px-2 text-center">Tue</th>
+                                    <th class="py-3 px-2 text-center">Wed</th>
+                                    <th class="py-3 px-2 text-center">Thu</th>
+                                    <th class="py-3 px-2 text-center">Fri</th>
+                                    <th class="py-3 px-2 text-center w-16">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="habitsTableBody" class="divide-y divide-slate-100 dark:divide-slate-800/40 text-sm">
+                                <!-- Dynamic habits injected here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- 4. POMODORO TIMER TAB -->
+                <div id="tab-pomodoro" class="tab-content flex-col items-center justify-center py-6">
+                    <div class="glass-panel p-8 rounded-3xl border border-white/60 dark:border-slate-800 shadow-2xl w-full max-w-md flex flex-col items-center">
+                        <div class="w-full flex items-center justify-between mb-6">
+                            <h3 class="text-xl font-bold text-slate-800 dark:text-slate-100" data-i18n="pomodoro_title">Focus Timer</h3>
+                            <div class="flex space-x-1.5 rtl:space-x-reverse bg-slate-200/60 dark:bg-slate-800 p-1.5 rounded-2xl">
+                                <button onclick="setPomodoroMode('work')" id="modeWorkBtn" class="px-4 py-1.5 rounded-xl text-xs font-bold bg-sage-500 text-white transition-all shadow-sm" data-i18n="pomo_work">Work</button>
+                                <button onclick="setPomodoroMode('break')" id="modeBreakBtn" class="px-4 py-1.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 transition-all" data-i18n="pomo_break">Break</button>
+                            </div>
+                        </div>
+
+                        <!-- Circular Countdown Display -->
+                        <div class="relative w-60 h-60 my-6 flex items-center justify-center rounded-full bg-gradient-to-tr from-sage-100 to-beige-200 dark:from-slate-800 dark:to-slate-700 shadow-inner">
+                            <div class="absolute inset-3 rounded-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-md flex flex-col items-center justify-center">
+                                <span id="timerDisplay" class="text-5xl font-extrabold text-slate-800 dark:text-slate-100 tracking-tight">25:00</span>
+                                <span id="timerStatusLabel" class="text-xs font-bold text-sage-600 dark:text-sage-400 mt-2 uppercase tracking-widest" data-i18n="status_ready">Ready</span>
+                            </div>
+                        </div>
+
+                        <!-- Timer Controls -->
+                        <div class="flex items-center space-x-3 rtl:space-x-reverse w-full mt-4">
+                            <button id="timerStartBtn" onclick="togglePomodoro()" class="flex-1 py-3.5 rounded-2xl bg-sage-500 hover:bg-sage-600 text-white font-bold text-sm shadow-lg shadow-sage-500/30 transition-all flex items-center justify-center space-x-2 rtl:space-x-reverse">
+                                <i id="timerIcon" class="fa-solid fa-play"></i>
+                                <span id="timerActionText" data-i18n="btn_start">Start</span>
+                            </button>
+                            <button onclick="resetPomodoro()" class="w-14 h-14 rounded-2xl bg-slate-200/80 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 flex items-center justify-center transition-all shadow-sm" title="Reset">
+                                <i class="fa-solid fa-rotate-right text-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Task Creation Modal -->
+    <div id="taskModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-300">
+        <div class="glass-panel w-full max-w-md p-6 rounded-3xl shadow-2xl border border-white/80 dark:border-slate-700 transform scale-95 transition-transform duration-300" id="modalContent">
+            <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-200 dark:border-slate-700">
+                <h3 class="text-lg font-bold text-slate-800 dark:text-slate-100" data-i18n="modal_title">Create New Task</h3>
+                <button onclick="closeTaskModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+            <form id="taskForm" class="space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1" data-i18n="label_task_title">Task Title</label>
+                    <input type="text" id="newTaskTitle" required class="w-full px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-sage-500" placeholder="e.g., Design Landing Page UI">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1" data-i18n="label_task_desc">Description / Notes</label>
+                    <textarea id="newTaskDesc" rows="3" class="w-full px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-sage-500 resize-none" placeholder="Add optional details..."></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1" data-i18n="label_task_status">Status</label>
+                        <select id="newTaskStatus" class="w-full px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-sage-500">
+                            <option value="todo" data-i18n="opt_todo">To Do</option>
+                            <option value="in-progress" data-i18n="opt_inprogress">In Progress</option>
+                            <option value="completed" data-i18n="opt_completed">Completed</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1" data-i18n="label_task_priority">Priority</label>
+                        <select id="newTaskPriority" class="w-full px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-sage-500">
+                            <option value="low" data-i18n="opt_low">Low</option>
+                            <option value="medium" selected data-i18n="opt_med">Medium</option>
+                            <option value="high" data-i18n="opt_high">High</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="pt-4 flex items-center justify-end space-x-3 rtl:space-x-reverse">
+                    <button type="button" onclick="closeTaskModal()" class="px-4 py-2 rounded-xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-sm font-medium hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors" data-i18n="btn_cancel">Cancel</button>
+                    <button type="submit" class="px-5 py-2 rounded-xl bg-sage-500 hover:bg-sage-600 text-white text-sm font-bold shadow-lg shadow-sage-500/25 transition-all" data-i18n="btn_save">Save Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Dictionary for Bilingual Support (EN & AR)
+        const translations = {
+            en: {
+                tagline: "Visual Workspace",
+                nav_dashboard: "Dashboard",
+                nav_kanban: "Tasks Board",
+                nav_habits: "Habit Tracker",
+                nav_pomodoro: "Pomodoro Timer",
+                daily_progress: "Daily Goal",
+                btn_new_task: "New Task",
+                greeting: "Good Morning, Achiever ✨",
+                metric_tasks: "Pending Tasks",
+                metric_inprogress: "In Progress",
+                metric_completed: "Completed",
+                metric_streak: "Focus Streak",
+                days: "days",
+                dash_recent_tasks: "Recent High-Priority Tasks",
+                view_all: "View All →",
+                kanban_title: "Interactive Task Board",
+                kanban_subtitle: "Click arrows to shift task status or drag across columns",
+                col_todo: "To Do",
+                col_inprogress: "In Progress",
+                col_completed: "Completed",
+                pomodoro_title: "Focus Timer",
+                pomo_work: "Work",
+                pomo_break: "Break",
+                status_ready: "Ready",
+                status_working: "Focusing",
+                status_break: "Break Time",
+                btn_start: "Start",
+                btn_pause: "Pause",
+                habit_title: "Weekly Habit Grid",
+                habit_subtitle: "Click any cell to toggle completion status cleanly with proper text alignment",
+                btn_add_habit: "Add Habit",
+                th_habit: "Habit Name",
+                notes_title: "Quick Scratchpad",
+                notes_saved: "Saved",
+                modal_title: "Create New Task",
+                label_task_title: "Task Title",
+                label_task_desc: "Description / Notes",
+                label_task_status: "Status",
+                label_task_priority: "Priority",
+                opt_todo: "To Do",
+                opt_inprogress: "In Progress",
+                opt_completed: "Completed",
+                opt_low: "Low",
+                opt_med: "Medium",
+                opt_high: "High",
+                btn_cancel: "Cancel",
+                btn_save: "Save Task"
+            },
+            ar: {
+                tagline: "مساحة العمل البصرية",
+                nav_dashboard: "لوحة القيادة",
+                nav_kanban: "لوحة المهام",
+                nav_habits: "متتبع العادات",
+                nav_pomodoro: "مؤقت البومودورو",
+                daily_progress: "الهدف اليومي",
+                btn_new_task: "مهمة جديدة",
+                greeting: "صباح الخير، يا متميز ✨",
+                metric_tasks: "مهام قيد الانتظار",
+                metric_inprogress: "جاري التنفيذ",
+                metric_completed: "مكتملة",
+                metric_streak: "سلسلة التركيز",
+                days: "أيام",
+                dash_recent_tasks: "أحدث المهام ذات الأولوية العالية",
+                view_all: "عرض الكل ←",
+                kanban_title: "لوحة المهام التفاعلية",
+                kanban_subtitle: "انقر لتغيير حالة المهمة أو نقلها بين الأعمدة",
+                col_todo: "قيد الانتظار",
+                col_inprogress: "جاري التنفيذ",
+                col_completed: "مكتمل",
+                pomodoro_title: "مؤقت التركيز",
+                pomo_work: "عمل",
+                pomo_break: "راحة",
+                status_ready: "جاهز",
+                status_working: "قيد التركيز",
+                status_break: "وقت الراحة",
+                btn_start: "ابدأ",
+                btn_pause: "إيقاف مؤقت",
+                habit_title: "جدول العادات الأسبوعي",
+                habit_subtitle: "انقر على أي خانة لتحديث حالة إنجاز العادة مع محاذاة واضحة للنصوص",
+                btn_add_habit: "إضافة عادة",
+                th_habit: "اسم العادة",
+                notes_title: "الملاحظات السريعة",
+                notes_saved: "تم الحفظ",
+                modal_title: "إضافة مهمة جديدة",
+                label_task_title: "عنوان المهمة",
+                label_task_desc: "الوصف / الملاحظات",
+                label_task_status: "الحالة",
+                label_task_priority: "الأولوية",
+                opt_todo: "قيد الانتظار",
+                opt_inprogress: "جاري التنفيذ",
+                opt_completed: "مكتمل",
+                opt_low: "منخفضة",
+                opt_med: "متوسطة",
+                opt_high: "عالية",
+                btn_cancel: "إلغاء",
+                btn_save: "حفظ المهمة"
+            }
+        };
+
+        let currentLang = 'en';
+        let currentTab = 'dashboard';
+
+        // Application State Data
+        let state = {
+            tasks: [
+                { id: 1, title: "Design Minimalist Glass UI", desc: "Create glassmorphic cards and clean layout.", status: "completed", priority: "high" },
+                { id: 2, title: "Implement Multi-Tab Navigation", desc: "Separate Dashboard, Tasks, Habits, and Pomodoro views.", status: "completed", priority: "high" },
+                { id: 3, title: "Build Weekly Habit Grid", desc: "Ensure flawless cell alignment and RTL text support.", status: "in-progress", priority: "medium" },
+                { id: 4, title: "Refine Pomodoro Timer Countdown", desc: "Add play, pause, reset and alert notifications.", status: "todo", priority: "high" }
+            ],
+            habits: [
+                { id: 1, name: "Morning Meditation 🧘", days: [true, true, false, true, true, false, false] },
+                { id: 2, name: "Read 30 mins 📚", days: [true, true, true, true, false, true, false] },
+                { id: 3, name: "Code 2 hours 💻", days: [true, false, true, true, true, true, true] }
+            ],
+            scratchpad: "Welcome to FocusFlow! Use this quick scratchpad for notes or daily intentions.",
+            pomodoro: {
+                minutes: 25,
+                seconds: 0,
+                isRunning: false,
+                mode: 'work',
+                timerId: null
+            }
+        };
+
+        // Load saved state from localStorage
+        function loadState() {
+            const saved = localStorage.getItem('focusflow_multi_state');
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    state.tasks = parsed.tasks || state.tasks;
+                    state.habits = parsed.habits || state.habits;
+                    state.scratchpad = parsed.scratchpad || state.scratchpad;
+                } catch(e) { console.error(e); }
+            }
+        }
+
+        function saveState() {
+            localStorage.setItem('focusflow_multi_state', JSON.stringify({
+                tasks: state.tasks,
+                habits: state.habits,
+                scratchpad: state.scratchpad
+            }));
+        }
+
+        // Initialization on window load
+        document.addEventListener('DOMContentLoaded', () => {
+            loadState();
+            renderAll();
+            setupEventListeners();
+            updateDateTime();
+            setInterval(updateDateTime, 60000);
+        });
+
+        function updateDateTime() {
+            const now = new Date();
+            const options = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' };
+            document.getElementById('currentDateDisplay').textContent = now.toLocaleDateString(currentLang === 'ar' ? 'ar-EG' : 'en-US', options);
+        }
+
+        function renderAll() {
+            renderDashboardRecent();
+            renderKanban();
+            renderHabits();
+            renderStats();
+            document.getElementById('scratchpadInput').value = state.scratchpad;
+            updateLocalization();
+        }
+
+        function updateLocalization() {
+            const t = translations[currentLang];
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (t[key]) el.textContent = t[key];
+            });
+            document.getElementById('langText').textContent = currentLang === 'en' ? 'AR' : 'EN';
+            document.documentElement.setAttribute('dir', currentLang === 'ar' ? 'rtl' : 'ltr');
+            document.documentElement.setAttribute('lang', currentLang);
+        }
+
+        // Navigation Switching
+        function switchTab(tabId) {
+            currentTab = tabId;
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            const target = document.getElementById(`tab-${tabId}`);
+            if (target) target.classList.add('active');
+
+            // Highlight active sidebar button
+            const navButtons = document.querySelectorAll('#navTabs button');
+            navButtons.forEach(btn => {
+                if (btn.getAttribute('data-tab') === tabId) {
+                    btn.className = "w-full flex items-center space-x-3 rtl:space-x-reverse px-4 py-3 rounded-xl bg-sage-500 text-white font-medium shadow-md shadow-sage-500/20 transition-all text-left rtl:text-right";
+                } else {
+                    btn.className = "w-full flex items-center space-x-3 rtl:space-x-reverse px-4 py-3 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-sage-100 dark:hover:bg-slate-800 font-medium transition-all text-left rtl:text-right";
+                }
+            });
+
+            // Close mobile sidebar if open
+            document.getElementById('sidebar').classList.add('-translate-x-full');
+            document.getElementById('sidebarOverlay').classList.add('hidden');
+        }
+
+        function setupEventListeners() {
+            // Sidebar tab clicks
+            document.querySelectorAll('#navTabs button').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const tab = btn.getAttribute('data-tab');
+                    switchTab(tab);
+                });
+            });
+
+            // Theme Toggle
+            document.getElementById('themeToggle').addEventListener('click', () => {
+                const html = document.documentElement;
+                if (html.classList.contains('dark')) {
+                    html.classList.remove('dark');
+                    html.classList.add('light');
+                } else {
+                    html.classList.remove('light');
+                    html.classList.add('dark');
+                }
+            });
+
+            // Language Toggle
+            document.getElementById('langToggle').addEventListener('click', () => {
+                currentLang = currentLang === 'en' ? 'ar' : 'en';
+                updateLocalization();
+                renderAll();
+            });
+
+            // Mobile menu toggles
+            const sidebar = document.getElementById('sidebar');
+            const sidebarOverlay = document.getElementById('sidebarOverlay');
+            const hamburgerBtn = document.getElementById('hamburgerBtn');
+            const closeSidebar = document.getElementById('closeSidebar');
+
+            function toggleMobileMenu() {
+                sidebar.classList.toggle('-translate-x-full');
+                sidebarOverlay.classList.toggle('hidden');
+            }
+
+            hamburgerBtn.addEventListener('click', toggleMobileMenu);
+            closeSidebar.addEventListener('click', toggleMobileMenu);
+            sidebarOverlay.addEventListener('click', toggleMobileMenu);
+
+            // Task Form Submit
+            const taskForm = document.getElementById('taskForm');
+            taskForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const title = document.getElementById('newTaskTitle').value;
+                const desc = document.getElementById('newTaskDesc').value;
+                const status = document.getElementById('newTaskStatus').value;
+                const priority = document.getElementById('newTaskPriority').value;
+
+                state.tasks.push({
+                    id: Date.now(),
+                    title,
+                    desc,
+                    status,
+                    priority
+                });
+
+                saveState();
+                renderAll();
+                taskForm.reset();
+                closeTaskModal();
+            });
+
+            // Scratchpad auto-save
+            const scratchpadInput = document.getElementById('scratchpadInput');
+            let timeout = null;
+            scratchpadInput.addEventListener('input', (e) => {
+                state.scratchpad = e.target.value;
+                document.getElementById('notesStatus').textContent = currentLang === 'ar' ? 'جارٍ الحفظ...' : 'Saving...';
+                clearTimeout(timeout);
+                timeout = setTimeout(() => {
+                    saveState();
+                    document.getElementById('notesStatus').textContent = currentLang === 'ar' ? 'تم الحفظ' : 'Saved';
+                }, 600);
+            });
+        }
+
+        // Modal Controls
+        function openTaskModal() {
+            const modal = document.getElementById('taskModal');
+            const content = document.getElementById('modalContent');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                content.classList.remove('scale-95');
+                content.classList.add('scale-100');
+            }, 10);
+        }
+
+        function closeTaskModal() {
+            const modal = document.getElementById('taskModal');
+            const content = document.getElementById('modalContent');
+            modal.classList.add('opacity-0');
+            content.classList.remove('scale-100');
+            content.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        // Dashboard Recent Tasks Rendering
+        function renderDashboardRecent() {
+            const container = document.getElementById('dashboardRecentTasks');
+            container.innerHTML = '';
+            const topTasks = state.tasks.filter(t => t.status !== 'completed').slice(0, 3);
+            
+            if (topTasks.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-400 italic" data-i18n="no_tasks">No pending tasks. Great job!</p>`;
+                return;
+            }
+
+            topTasks.forEach(task => {
+                const item = document.createElement('div');
+                item.className = "flex items-center justify-between p-3.5 rounded-2xl bg-white/70 dark:bg-slate-800/70 border border-slate-200/60 dark:border-slate-700/60 shadow-sm";
+                item.innerHTML = `
+                    <div class="flex items-center space-x-3 rtl:space-x-reverse">
+                        <div class="w-2.5 h-2.5 rounded-full ${task.priority === 'high' ? 'bg-rose-500' : 'bg-amber-500'}"></div>
+                        <div>
+                            <h4 class="text-sm font-semibold text-slate-800 dark:text-slate-100">${escapeHtml(task.title)}</h4>
+                            <p class="text-xs text-slate-500 dark:text-slate-400">${task.status.toUpperCase()}</p>
+                        </div>
+                    </div>
+                    <button onclick="switchTab('tasks')" class="text-xs px-3 py-1.5 rounded-xl bg-sage-100 dark:bg-slate-700 text-sage-700 dark:text-sage-300 font-semibold hover:bg-sage-200 transition-colors">Manage</button>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        // Kanban Board Rendering & Interactivity
+        function renderKanban() {
+            const columns = {
+                todo: document.getElementById('columnTodo'),
+                'in-progress': document.getElementById('columnInProgress'),
+                completed: document.getElementById('columnCompleted')
+            };
+
+            Object.values(columns).forEach(col => col.innerHTML = '');
+            let counts = { todo: 0, 'in-progress': 0, completed: 0 };
+
+            state.tasks.forEach(task => {
+                counts[task.status] = (counts[task.status] || 0) + 1;
+                const col = columns[task.status];
+                if (!col) return;
+
+                const card = document.createElement('div');
+                card.className = "bg-white/85 dark:bg-slate-800/85 p-4 rounded-2xl border border-slate-200/70 dark:border-slate-700 shadow-sm hover:shadow-md transition-all group relative";
+                
+                const priorityColors = {
+                    high: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-200",
+                    medium: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-200",
+                    low: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-200"
+                };
+
+                card.innerHTML = `
+                    <div class="flex items-start justify-between mb-2">
+                        <h4 class="font-semibold text-slate-800 dark:text-slate-100 text-sm">${escapeHtml(task.title)}</h4>
+                        <span class="text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-md border ${priorityColors[task.priority] || priorityColors.medium}">${task.priority}</span>
+                    </div>
+                    ${task.desc ? `<p class="text-xs text-slate-500 dark:text-slate-400 mb-3 line-clamp-2">${escapeHtml(task.desc)}</p>` : ''}
+                    <div class="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700/50 text-xs">
+                        <div class="flex space-x-1 rtl:space-x-reverse">
+                            <button onclick="moveTask(${task.id}, 'prev')" class="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-sage-100 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-colors" title="Move Left">
+                                <i class="fa-solid fa-chevron-left"></i>
+                            </button>
+                            <button onclick="moveTask(${task.id}, 'next')" class="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-700 hover:bg-sage-100 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-colors" title="Move Right">
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </button>
+                        </div>
+                        <button onclick="deleteTask(${task.id})" class="text-slate-400 hover:text-rose-500 transition-colors">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                    </div>
+                `;
+                col.appendChild(card);
+            });
+
+            document.getElementById('countTodo').textContent = counts.todo;
+            document.getElementById('countInProgress').textContent = counts['in-progress'];
+            document.getElementById('countCompleted').textContent = counts.completed;
+        }
+
+        function moveTask(id, direction) {
+            const task = state.tasks.find(t => t.id === id);
+            if (!task) return;
+
+            const sequence = ['todo', 'in-progress', 'completed'];
+            let currentIndex = sequence.indexOf(task.status);
+
+            if (direction === 'next' && currentIndex < sequence.length - 1) {
+                task.status = sequence[currentIndex + 1];
+            } else if (direction === 'prev' && currentIndex > 0) {
+                task.status = sequence[currentIndex - 1];
+            }
+
+            saveState();
+            renderAll();
+        }
+
+        function deleteTask(id) {
+            state.tasks = state.tasks.filter(t => t.id !== id);
+            saveState();
+            renderAll();
+        }
+
+        // Weekly Habit Grid Rendering with Clean Alignment & RTL support
+        function renderHabits() {
+            const tbody = document.getElementById('habitsTableBody');
+            tbody.innerHTML = '';
+
+            state.habits.forEach(habit => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors";
+                
+                let daysHtml = '';
+                habit.days.forEach((completed, dayIdx) => {
+                    daysHtml += `
+                        <td class="py-3 px-2 text-center">
+                            <button onclick="toggleHabit(${habit.id}, ${dayIdx})" class="w-9 h-9 rounded-xl transition-all transform hover:scale-110 flex items-center justify-center mx-auto ${completed ? 'bg-sage-500 text-white shadow-md shadow-sage-500/30' : 'bg-slate-200/70 dark:bg-slate-800 text-slate-400 hover:bg-slate-300 dark:hover:bg-slate-700'}">
+                                <i class="fa-solid ${completed ? 'fa-check text-xs' : 'fa-minus text-[10px]'}"></i>
+                            </button>
+                        </td>
+                    `;
+                });
+
+                tr.innerHTML = `
+                    <td class="py-3 px-4 font-semibold text-slate-800 dark:text-slate-100">
+                        <div class="flex items-center justify-between">
+                            <span class="truncate pr-2">${escapeHtml(habit.name)}</span>
+                        </div>
+                    </td>
+                    ${daysHtml}
+                    <td class="py-3 px-2 text-center">
+                        <button onclick="deleteHabit(${habit.id})" class="text-slate-400 hover:text-rose-500 transition-colors p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-900/30" title="Delete Habit">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function toggleHabit(habitId, dayIndex) {
+            const habit = state.habits.find(h => h.id === habitId);
+            if (habit) {
+                habit.days[dayIndex] = !habit.days[dayIndex];
+                saveState();
+                renderHabits();
+                renderStats();
+            }
+        }
+
+        function addNewHabitPrompt() {
+            const name = prompt(currentLang === 'ar' ? 'أدخل اسم العادة الجديدة:' : 'Enter new habit name:');
+            if (name && name.trim() !== '') {
+                state.habits.push({
+                    id: Date.now(),
+                    name: name.trim(),
+                    days: [false, false, false, false, false, false, false]
+                });
+                saveState();
+                renderHabits();
+            }
+        }
+
+        function deleteHabit(habitId) {
+            state.habits = state.habits.filter(h => h.id !== habitId);
+            saveState();
+            renderHabits();
+        }
+
+        // Pomodoro Timer Logic
+        function setPomodoroMode(mode) {
+            state.pomodoro.mode = mode;
+            resetPomodoro();
+            const workBtn = document.getElementById('modeWorkBtn');
+            const breakBtn = document.getElementById('modeBreakBtn');
+            if (mode === 'work') {
+                workBtn.className = "px-4 py-1.5 rounded-xl text-xs font-bold bg-sage-500 text-white transition-all shadow-sm";
+                breakBtn.className = "px-4 py-1.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 transition-all";
+            } else {
+                breakBtn.className = "px-4 py-1.5 rounded-xl text-xs font-bold bg-sage-500 text-white transition-all shadow-sm";
+                workBtn.className = "px-4 py-1.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-400 transition-all";
+            }
+        }
+
+        function togglePomodoro() {
+            const p = state.pomodoro;
+            if (p.isRunning) {
+                clearInterval(p.timerId);
+                p.isRunning = false;
+                document.getElementById('timerIcon').className = "fa-solid fa-play";
+                document.getElementById('timerActionText').textContent = translations[currentLang].btn_start;
+                document.getElementById('timerStatusLabel').textContent = translations[currentLang].status_ready;
+            } else {
+                p.isRunning = true;
+                document.getElementById('timerIcon').className = "fa-solid fa-pause";
+                document.getElementById('timerActionText').textContent = translations[currentLang].btn_pause;
+                document.getElementById('timerStatusLabel').textContent = p.mode === 'work' ? translations[currentLang].status_working : translations[currentLang].status_break;
+                
+                p.timerId = setInterval(() => {
+                    if (p.seconds > 0) {
+                        p.seconds--;
+                    } else if (p.minutes > 0) {
+                        p.minutes--;
+                        p.seconds = 59;
+                    } else {
+                        clearInterval(p.timerId);
+                        p.isRunning = false;
+                        alert(p.mode === 'work' ? 'Pomodoro work session completed! Take a break.' : 'Break time finished! Ready to focus?');
+                        setPomodoroMode(p.mode === 'work' ? 'break' : 'work');
+                        return;
+                    }
+                    updateTimerDisplay();
+                }, 1000);
+            }
+        }
+
+        function resetPomodoro() {
+            const p = state.pomodoro;
+            clearInterval(p.timerId);
+            p.isRunning = false;
+            p.minutes = p.mode === 'work' ? 25 : 5;
+            p.seconds = 0;
+            document.getElementById('timerIcon').className = "fa-solid fa-play";
+            document.getElementById('timerActionText').textContent = translations[currentLang].btn_start;
+            document.getElementById('timerStatusLabel').textContent = translations[currentLang].status_ready;
+            updateTimerDisplay();
+        }
+
+        function updateTimerDisplay() {
+            const p = state.pomodoro;
+            const minStr = String(p.minutes).padStart(2, '0');
+            const secStr = String(p.seconds).padStart(2, '0');
+            document.getElementById('timerDisplay').textContent = `${minStr}:${secStr}`;
+        }
+
+        // Stats & Progress Calculation
+        function renderStats() {
+            const totalTasks = state.tasks.length;
+            const completedTasks = state.tasks.filter(t => t.status === 'completed').length;
+            const inProgressTasks = state.tasks.filter(t => t.status === 'in-progress').length;
+            const pendingTasks = state.tasks.filter(t => t.status === 'todo').length;
+
+            document.getElementById('statPending').textContent = pendingTasks;
+            document.getElementById('statInProgress').textContent = inProgressTasks;
+            document.getElementById('statCompleted').textContent = completedTasks;
+
+            const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+            document.getElementById('progressText').textContent = `${progress}%`;
+            document.getElementById('progressBar').style.width = `${progress}%`;
+        }
+
+        // Security helper to escape HTML
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
